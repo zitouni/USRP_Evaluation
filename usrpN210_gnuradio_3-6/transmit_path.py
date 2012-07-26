@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # Copyright 2008 Free Software Foundation, Inc.
 #
@@ -17,45 +18,85 @@
 # along with GNU Radio; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
-#
+# MODIFIER PAR RAFIK ZITOUNI     
 
-from gnuradio import gr
-from math import pi, log10
-import cmath
+from gnuradio import gr, eng_notation, uhd
+from gnuradio.eng_option import eng_option
 
-class transmit_path(gr.hier_block2):
-    """
-    This transmits a BERT sequence of bits using filtered BPSK and
-    outputs the complex baseband waveform.
-    """
-    def __init__(self,
-                 sps,          # Samples per symbol
-                 excess_bw,    # RRC filter excess bandwidth (typically 0.35-0.5)
-                 amplitude     # DAC output level, 0-32767, typically 2000-8000
-                 ):
+from bpsk_modulator import bpsk_modulator
 
-        gr.hier_block2.__init__(self, "transmit_path",
-                                gr.io_signature(0, 0, 0),                    # Input signature
-                                gr.io_signature(1, 1, gr.sizeof_gr_complex)) # Output signature
+class transmit_path(gr.top_block):
+    def __init__(self, options, plusieurs = None):    
+        gr.top_block.__init__(self, "tx_mpsk")
+        
+        self.plusieurs = plusieurs
 
-        # Create BERT data bit stream	
-	self._bits = gr.vector_source_b([1,], True)      # Infinite stream of ones
-        self._scrambler = gr.scrambler_bb(0x8A, 0x7F, 7) # CCSDS 7-bit scrambler
+        self._transmitter = bpsk_modulator(options.sps,
+                                          options.excess_bw,
+                                          options.amplitude)
 
-	# Map to constellation
-	self._constellation = [-1+0j, 1+0j]
-	self._mapper = gr.chunks_to_symbols_bc(self._constellation)	
+        self._setup_usrp(options)
+    
+        self.connect(self._transmitter, self._usrp)
 
-	# Create RRC with specified excess bandwidth
-	taps = gr.firdes.root_raised_cosine(sps*amplitude,  # Gain
-					    sps,	    # Sampling rate
-					    1.0,	    # Symbol rate
-					    excess_bw,	    # Roll-off factor
-					    11*sps)         # Number of taps
+        
+    def _setup_usrp(self, options):
+        """
+        Creates a USRP sink, determines the settings for best bitrate,
+        and attaches to the transmitter's subdevice.
+        """
+        #self.u = usrp_options.create_usrp_sink(options)
+        
+        #self.u.set_interp_rate(self._interp)
+        #print "interpolation : ",  self._interp     
+        self._samples_per_symbol = options.sps
+        samp_rate= options.samp_rate
+        
+        self.rs_rate = options.rate    # Store requested bit rat
+        print "*******************************************************Transmission Parameters************************"
+        print "USRP Adress: ", options.address
+        print "Transmission Freqeuncy: ", eng_notation.num_to_str(options.freq)
+        print "Sample rate or (Freqeuncy Sampling): ", eng_notation.num_to_str(options.samp_rate)
+        print "Samples per symbol: ", options.sps
+        print "data rate : ",  eng_notation.num_to_str(options.rate)
+        print "Gain  : ", options.gain
+        print "Amplitude : ", options.amplitude
+        print "*******************************************************Transmission Parameters************************"
 
-	self._rrc = gr.interp_fir_filter_ccf(sps,	    # Interpolation rate
-					     taps)	    # FIR taps
+        
+        #Configuration of USRP by UHD Driver
 
-    # Wire block inputs and outputs
-        self.connect(self._bits, self._scrambler, self._mapper, self._rrc, self)
+        self.u = uhd.usrp_sink(
+            device_addr=options.address,
+            stream_args=uhd.stream_args(
+                cpu_format="fc32",
+                channels=range(1),
+            ),
+        )
+        
+        self.u.set_subdev_spec("A:0", 0)
+        self.u.set_samp_rate(samp_rate)
+        self.u.set_center_freq(options.freq, 0)
+        self.u.set_gain(options.gain, 0)
+        
+        self._usrp = self.u
+        
+    def changeOptionsTransmitter(self, options):
+        
+        #disconnect the current tranmitter from the usrp
+        self.disconnect(self._transmitter, self._usrp)
+        
+        self._transmitter = bpsk_modulator(options.sps,
+                                          options.excess_bw,
+                                          options.amplitude)
+        
+        self.connect(self._transmitter, self._usrp)
+        
+    def kill(self):
+        self.stop()
+        self.disconnect_all()
+        self._transmitter = None
+        self._usrp = None
+        del self
 
+                
