@@ -31,9 +31,10 @@ class transmit_path(gr.top_block):
         
         self.plusieurs = plusieurs
 
+        self.vector_source = gr.vector_source_b([1,], True)
         self._transmitter = bpsk_modulator(options.sps,
                                           options.excess_bw,
-                                          options.amplitude)
+                                          options.amplitude, self.vector_source)
 
         self._setup_usrp(options)
     
@@ -86,10 +87,23 @@ class transmit_path(gr.top_block):
         #disconnect the current tranmitter from the usrp
         self.disconnect(self._transmitter, self._usrp)
         
+        self.vector_source = gr.vector_source_b([1,], True)
+        
         self._transmitter = bpsk_modulator(options.sps,
                                           options.excess_bw,
-                                          options.amplitude)
+                                          options.amplitude, self.vector_source)
         
+        self.connect(self._transmitter, self._usrp)
+    
+    def changeOptionsTransmitterWithVectorCode(self, options):
+        #disconnect the current tranmitter from the usrp
+        self.disconnect(self._transmitter, self._usrp)
+        
+        self.vector_source = gr.vector_source_b([1, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], True) 
+        
+        self._transmitter = bpsk_modulator(options.sps,
+                                          options.excess_bw,
+                                          options.amplitude, self.vector_source)
         self.connect(self._transmitter, self._usrp)
         
     def kill(self):
