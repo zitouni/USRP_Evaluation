@@ -23,6 +23,7 @@
 from gnuradio import gr, eng_notation, uhd
 from gnuradio.eng_option import eng_option
 
+import howto
 from bpsk_modulator import bpsk_modulator
 
 class transmit_path(gr.top_block):
@@ -99,7 +100,8 @@ class transmit_path(gr.top_block):
         #disconnect the current tranmitter from the usrp
         self.disconnect(self._transmitter, self._usrp)
         
-        self.vector_source = gr.vector_source_b([1, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], True) 
+        self.vector_source = howto.vector_source2(( 1, 1, 1, 1 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1), (0,0,1,1,0,0), True, True, 1)
+        #self.vector_source = gr.vector_source_b([1, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], True) 
         
         amplitude_send_vector = 1
         self._transmitter = bpsk_modulator(options.sps,
