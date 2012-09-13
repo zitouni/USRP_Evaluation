@@ -125,7 +125,7 @@ class Form(wx.Frame):
 #                                             value='100')
         self.radio_b2 = wx.RadioButton(self.pnl1, -1, 'Fix time between the change of parameters (Sec)', (10,40))
         self.temps_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(430, 40), size=wx.Size(80, 25), 
-                                             value='600')
+                                             value='10')
         
         self.text_indication = wx.StaticText(self.pnl1, -1, pos = wx.Point(20, 70), label= "This time = at least twice the waiting time of a receiver")
         #self.options_gui.set_periode_temps(float(self.temps_gui.GetValue()))

@@ -45,7 +45,7 @@ def get_options():
     parser.add_option("-S", "--samples-per-symbol", type = "float", default=2,
                           help="set samples/symbol [default=%default]")
     
-    parser.add_option("-s", "--samp-rate", type="eng_float", default=0.5e6,
+    parser.add_option("-s", "--samp-rate", type="eng_float", default=0.25e6,
                       help="Select modulation sample rate (default=%default)")
     
     parser.add_option("-r", "--data-rate", type="eng_float", default=250e3,
@@ -54,7 +54,7 @@ def get_options():
     parser.add_option("-f", "--freq", type="eng_float", default=2485000000,
                       help="set frequency to FREQ", metavar="FREQ")
     
-    parser.add_option ("-g", "--gain", type="eng_float", default=40,
+    parser.add_option ("-g", "--gain", type="eng_float", default=70,
                        help="set Rx PGA gain in dB [0,20]")
         
     parser.add_option("-v", "--verbose", action ="store_true", default=False)

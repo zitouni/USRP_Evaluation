@@ -24,6 +24,7 @@ from gnuradio import gr, eng_notation, uhd
 from gnuradio.eng_option import eng_option
 
 import howto
+#from bpsk_modulator import bpsk_modulator
 from bpsk_modulator import bpsk_modulator
 
 class transmit_path(gr.top_block):

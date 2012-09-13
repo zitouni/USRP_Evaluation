@@ -8,6 +8,8 @@ Created on july, 2012
 from gnuradio import gr, eng_notation, uhd
 from gnuradio.eng_option import eng_option
 
+#from bpsk_demodulator import bpsk_demodulator
+
 from bpsk_demodulator import bpsk_demodulator
 
 class receiver_path(gr.top_block):

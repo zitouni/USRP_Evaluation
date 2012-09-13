@@ -21,25 +21,41 @@ class Param():
     
     def __init__(self):
         
-        self.init_zero_param()
+        self.set_param()
         
         self.dac_courant = 0.0 
         self.distance = 0.0
         self.frequence = 0.0 
         self.dac_pas = 0.0
-    
-    def init_zero_param(self):
+          
+    def set_param(self):
         self.nbr_values = 0.0
         self.som_ber = 0.0 
         self.moy_ber = 0.0
         self.som_snr = 0.0 
         self.moy_snr = 0.0 
         self.moy_snr = 0.0
+        
+        self.min_ber = float('+inf')
+        self.min_snr = float('+inf')
+        self.max_ber = float('-inf')
+        self.max_snr = float('-inf') 
 
         
     def calculSum (self, ber, snr):
         self.som_ber = self.som_ber + ber
         self.som_snr = self.som_snr + snr 
+        
+    def calculMaxMin (self, ber, snr):
+        if ber <= self.min_ber :
+            self.min_ber = ber
+        if ber >= self.max_ber :
+            self.max_ber = ber
+            
+        if snr <= self.min_snr :
+            self.min_snr = snr
+        if snr >= self.max_snr :
+            self.max_snr = snr 
     
     # Calculate the values of parameters means  
     def calculAverage (self):
@@ -49,14 +65,29 @@ class Param():
         except ZeroDivisionError:
             print "Attention division by 0 !!"
     
+    def get_moy_snr(self):
+        return self.moy_snr
+    
+    def get_moy_ber(self):
+        return self.moy_ber
+    
+    def get_min_ber(self):
+        return self.min_ber
+    
+    def get_min_snr(self):
+        return self.min_snr
+    
+    def get_max_ber(self):
+        return self.max_ber
+    
+    def get_max_snr(self):
+        return self.max_snr
+    
     def inc_dac_pas (self, valeur_courant):
         return valeur_courant + self.dac_pas    
 
     def inc_nbr_values(self):
         self.nbr_values +=1 
-      
-    def set_nbr_values(self, nbr_values_valeur):
-        self.nbr_values = nbr_values_valeur
     
     def set_dac_courant(self, dac_courant_valeur):
         self.dac_courant = dac_courant_valeur
@@ -75,12 +106,6 @@ class Param():
         
     def get_distance(self):
         return self.distance
-    
-    def get_moy_snr(self):
-        return self.moy_snr
-    
-    def get_moy_ber(self):
-        return self.moy_ber
     
     def get_dac_fin(self):
         return self.dac_fin   
@@ -106,30 +131,7 @@ class thread_flot_graph (_threading.Thread):
         except KeyboardInterrupt:
             pass
 
-    
-  
-class status_thread(_threading.Thread):
-    def __init__(self, tb):
-        _threading.Thread.__init__(self)
-        self.setDaemon(1) 
-        self.tb = tb  
-        #self.condition = condition
-        self.done = False 
-        self.start() 
 
-    def run(self):
-        while not self.done:
-            #print "Estimated SNR: %4.1f dB  BER: %g" % ( tb.snr(), tb.ber())       
-            print "Estimated SNR: %f dB  BER: %f" % ( self.tb.snr(), self.tb.ber()) 
-       
-            try:
-                time.sleep(1.0)
-            except KeyboardInterrupt:
-                self.done = True
-                
-#            if (self.tb.get_compare_vector_decision()):
-#                print "I received signalization trame"
-#                self.tb.set_compare_vector_decision(False)
     
 class Option():
     frequence = 0.0
@@ -159,24 +161,12 @@ class Option():
         
     def set_distance (self, valeur_distance):
         self.distance = valeur_distance
-    
-    def set_periode_temps (self, valeur_periode_temps):
-        self.periode_temps = valeur_periode_temps
-        
-    def set_attente (self, valeur_attente):
-        self.attente = valeur_attente
         
     def set_dac_fin (self, valeur_dac_fin):
         self.dac_fin = valeur_dac_fin
         
     def set_frequence(self, valeur_frequence):
         self.frequence = valeur_frequence
-        
-    def get_periode_temps (self):
-        return self.periode_temps
-    
-    def get_attente (self):
-        return self.attente
         
     def get_dac_fin(self):
         return self.dac_fin
@@ -195,24 +185,30 @@ class Option():
     
     def get_frequence (self):
         return self.frequence  
-    
-class Thread_check (_threading.Thread):
+
+class status_thread(_threading.Thread):
     def __init__(self, tb):
         _threading.Thread.__init__(self)
-        
-        self.done = True
-        self.tb = tb
-        print " ***********************************is same vector thread*****************************"
-        self.start()
-        
+        self.setDaemon(1) 
+        self.tb = tb  
+        #self.condition = condition
+        self.done = False 
+        self.start() 
+
     def run(self):
-        while (self.done):
-                #while (self.tb.comparator_vector_number()>0):                
-                if (self.tb.comparator_vector_decision()):
-                    print " ***********************************is same vector*****************************", self.tb.comparator_vector_number() 
-                    #self.done = False
-                    #self.tb.disconnect_all()
-                    #self.tb.stop()
+        while not self.done:
+            #print "Estimated SNR: %4.1f dB  BER: %g" % ( tb.snr(), tb.ber())       
+            print "Estimated SNR: %f dB  BER: %f" % ( self.tb.snr(), self.tb.ber()) 
+       
+            try:
+                time.sleep(1.0)
+            except KeyboardInterrupt:
+                self.done = True
+                
+#            if (self.tb.get_compare_vector_decision()):
+#                print "I received signalization trame"
+#                self.tb.set_compare_vector_decision(False)
+     
 
 class Form(wx.Frame):   
     nbr_fichiers_sauvegarde = 0
@@ -234,7 +230,7 @@ class Form(wx.Frame):
         #thread_check = Thread_check(self.tb)
         
         self.flot_graph = thread_flot_graph(self.tb)
-        #self.status = status_thread(self.tb)
+        self.status = status_thread(self.tb)
         
     def OnClose(self, event):
         self.tb.stop()
@@ -269,17 +265,17 @@ class Form(wx.Frame):
         self.options.set_dac_init(float(self.dac_init_gui.GetValue()))
         self.options.set_dac_pas(float(self.dac_pas_gui.GetValue()))
         self.options.set_dac_fin(float(self.dac_fin_gui.GetValue()))
-        self.options.set_periode_temps(float(self.temps_gui.GetValue()))
-        self.options.set_attente(float(self.attente_gui.GetValue()))
+        #self.options.set_periode_temps(float(self.temps_gui.GetValue()))
+        #self.options.set_attente(float(self.attente_gui.GetValue()))
         #self.options.set_frequence(float(self.freq_gui.GetValue()))
         
     def panneau_1 (self, sizer):
         self.pnl1= wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
         
         self.radio_b1 = wx.RadioButton(self.pnl1, -1, 'Fix a number of measured parameters values', (10,10), style=wx.RB_GROUP)
-        self.radio_b1.SetValue(True)
-        self.etat1 = True
-        self.etat2 = False
+        self.radio_b1.SetValue(False)
+        self.etat1 = False
+        self.etat2 = True
         self.nbr_values_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(480, 5), size=wx.Size(80, 25), 
                                              value='100') 
         self.text_distance = wx.StaticText(self.pnl1, -1, pos = wx.Point(570, 10), label= "Distance between transmitter and receiver (cm)")
@@ -288,25 +284,26 @@ class Form(wx.Frame):
         
         
         self.radio_b2 = wx.RadioButton(self.pnl1, -1, 'Fix a period of time to calculate the average of parametres (Sec)', (10,70))
-        self.temps_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(480, 65), size=wx.Size(80, 25), 
-                                             value='600') 
-        wx.StaticText(self.pnl1, -1, pos = wx.Point(35, 95), label= " Waiting time betwenn the periods of calculating the average (Sec)")
-        self.attente_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(480, 90), size=wx.Size(80, 25), 
-                                             value='60')
+        self.radio_b2.SetValue(True)
+#        self.temps_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(480, 65), size=wx.Size(80, 25), 
+#                                             value='10') 
+#        wx.StaticText(self.pnl1, -1, pos = wx.Point(35, 95), label= " Waiting time betwenn the periods of calculating the average (Sec)")
+#        self.attente_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(480, 90), size=wx.Size(80, 25), 
+#                                             value='2')
         
         self.text_dac_init = wx.StaticText(self.pnl1, -1, pos = wx.Point(570, 40), label= "Initial value of signal amplitude")
         self.dac_init_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(890, 35), size=wx.Size(80, 25), 
-                                             value='1000')
+                                             value='0')
         
         
         self.text_dac_pas = wx.StaticText(self.pnl1, -1, pos = wx.Point(570, 70), label= "Amplitude variation step ")
         self.dac_pas_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(890, 65), size=wx.Size(80, 25), 
-                                             value='50')
+                                             value='0.001')
     
     
         self.text_dac_fin = wx.StaticText(self.pnl1, -1, pos = wx.Point(570, 100), label= "Maximum amplitude value")
         self.dac_fin_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(890, 95), size=wx.Size(80, 25), 
-                                             value='33000')
+                                             value='0.9')
         
         
         self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_b1.GetId())
@@ -340,7 +337,7 @@ class Form(wx.Frame):
     
     def panneau_3 (self, sizer):
         self.pnl3 = wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
-        self.text_performances = wx.TextCtrl(self.pnl3, -1, pos=wx.Point(0, 0), size=wx.Size(900,400), style=wx.TE_MULTILINE, 
+        self.text_performances = wx.TextCtrl(self.pnl3, -1, pos=wx.Point(0, 0), size=wx.Size(1600,400), style=wx.TE_MULTILINE, 
                                              value='The averages of parameters SNR et BER')
         
     def InitValeurRadio (self, event):
@@ -396,23 +393,30 @@ class Form(wx.Frame):
 
     def afficher_param (self, param):
         #Test if the value of tb is passed by constructure
-        if not param== None :
-            self.text_performances.WriteText("Values number: " + str(param.get_nbr_value())+
-                                             " Distance: "+ str(param.get_distance())+
-                                             " BER: " + str(param.get_moy_ber())+ 
-                                             " SNR: " + str(param.get_moy_snr()) + 
-                                             " DAC: " + str(param.get_dac_courant()) + 
-                                             " FREQ: " + str(param.get_frequence()) +"\n") 
-            #Save Backup of data mesured
-            nomFichier = "BackUp.dat"
-            fichierBackUp = open(nomFichier,"w")  
-            fichierBackUp.writelines(self.text_performances.GetValue())
-            fichierBackUp.close()
-                                                
-#                                             " Frequency_Offset: " + str(self.pm.Calcul_Moyennes()[3]) +
-#                                             " Timing_offset: " + str(self.pm.Calcul_Moyennes()[4])+"\n" )
-        else :
-            self.text_performances.WriteText("Calculate\n")
+        try :
+            if not param== None :
+                self.text_performances.WriteText("nbr: " + str(param.get_nbr_value())+
+                                                 " Dist: "+ str(param.get_distance())+
+                                                 " BerMoy: " + str(param.get_moy_ber())+
+                                                 " BerMin: " + str(param.get_min_ber())+ 
+                                                 " BerMax: " + str(param.get_max_ber())+
+                                                 " SnrMoy: " + str(param.get_moy_snr())+
+                                                 " SnrMin: " + str(param.get_min_snr())+ 
+                                                 " SnrMax: " + str(param.get_max_snr())+ 
+                                                 " Amp: " + str(param.get_dac_courant()) + 
+                                                 " Freq: " + str(param.get_frequence()) +"\n") 
+                #Save Backup of data mesured
+                nomFichier = "BackUp.dat"
+                fichierBackUp = open(nomFichier,"w")  
+                fichierBackUp.writelines(self.text_performances.GetValue())
+                fichierBackUp.close()
+                                                    
+                #                                             " Frequency_Offset: " + str(self.pm.Calcul_Moyennes()[3]) +
+                #                                             " Timing_offset: " + str(self.pm.Calcul_Moyennes()[4])+"\n" )
+            else :
+                self.text_performances.WriteText("Calculate\n")
+        except Exception:
+            print 'Application interrupted 1'  
     
     def OnClose(self, event):
         self.tb.kill()
@@ -478,7 +482,7 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
             condition.wait()
             
 #            #Calcul la moyenne des parametres
-            self.pm_nbr.calculAverage() 
+
             self.fenetre.afficher_param(self.pm_nbr)
             self.fenetre.sauvegarder_fichier()          
         
@@ -490,8 +494,8 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
             condition.wait()
             
             #Calcul la moyenne des parametres
-            self.pm_temps.calculAverage()
-            self.fenetre.afficher_param(self.pm_temps)
+            #self.pm_temps.calculAverage()
+            #self.fenetre.afficher_param(self.pm_temps)
             self.fenetre.sauvegarder_fichier()  
         
         self.fenetre.button_calculer.Enable()    
@@ -523,35 +527,16 @@ class Thread_Param_Calcul_Temps (_threading.Thread, Param):
     def run(self):
         self.condition.acquire()
         print "State Time"     
-        temps_attente = self.fenetre.options.get_attente()
         
         while self.get_dac_courant() <= self.fenetre.options.get_dac_fin() and not self.arreter_calcul :       
-            #Attente pour une periode de 60 secondes avant la prise de valeurs        
-            try:
-                time.sleep(temps_attente)
-            except KeyboardInterrupt:
-                self.done = True     
-            #initialize to zero the parameters 
-            self.init_zero_param()
-            #calcul the time
-            temps_init = time.time()        
-            # Prendre des mesures de valeurs saufs celles avant 60 secondes de la fin
-            temps_fin = temps_init + self.fenetre.options.get_periode_temps() 
-            #Teste si le temps actuel est avant la fin du temps
-            #while time.time() < temps_fin and not self.arreter_calcul:
-            
-                            
-            print "Estimated SNR: %f dB  BER: %f" % ( self.tb.snr(), self.tb.ber())   
-            
-            if (not self.tb.get_compare_vector_decision()):
-                print "I received signalization trame"
-                #self.tb.set_compare_vector_decision(False)
+    
                 
-            while ((not self.tb.get_compare_vector_decision()) and (not self.arreter_calcul)):              
+            while (( self.tb.ber()<=0.56) and (not self.arreter_calcul)):              
                 try :
                     if (math.isinf(self.tb.ber()) or math.isnan(self.tb.ber()) or math.isinf(self.tb.snr()) or math.isnan(self.tb.snr())):
-                        pass
+                        continue
                     else:
+                        self.calculMaxMin(self.tb.ber(), self.tb.snr())
                         self.calculSum(self.tb.ber(), self.tb.snr())
                         self.inc_nbr_values()
                         self.arreter_calcul = self.fenetre.get_arreter_calcul()
@@ -562,23 +547,27 @@ class Thread_Param_Calcul_Temps (_threading.Thread, Param):
                     time.sleep(1.0)
                 except KeyboardInterrupt:
                     self.done = True
-                    
-            #Attente pour une periode de 60 secondes avant la prise de valeurs        
+                
+#            if (self.tb.get_compare_vector_decision()):
+            
+            print "Estimated SNR: %f dB  BER: %f " % ( self.tb.snr(), self.tb.ber())
+            
             try:
-                time.sleep(temps_attente)
+                time.sleep(1.0)
             except KeyboardInterrupt:
-                self.done = True
+                print 'Application interrupted 3'
 
             #Calcul la moyenne des parametres
             try :
-                if (self.get_nbr_value() != 0):
+                if ((self.get_nbr_value() != 0) and ( self.tb.ber()>0.60)):
                     self.calculAverage()
-                    self.fenetre.afficher_param(self)  
-            
-                self.set_nbr_values(0.0)            
-                self.dac_courant = self.inc_dac_pas(self.dac_courant)  
+                    self.fenetre.afficher_param(self)
+                    self.dac_courant = self.inc_dac_pas(self.dac_courant)
+                    self.tb.set_compare_vector_decision(False)  
+                    self.set_param()  
             except Exception:
-                print 'Application interrupted 2'     
+                print 'Application interrupted 2'  
+                
                       
         self.condition.notify()
         self.condition.release()
