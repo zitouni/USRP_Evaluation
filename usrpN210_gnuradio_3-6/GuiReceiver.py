@@ -305,6 +305,10 @@ class Form(wx.Frame):
         #Indicate type of modulation technique 
         self.state_mod = 1
         
+        self.text_time_period = wx.StaticText(self.pnl_modulation, -1, pos = wx.Point(570, 12), label= "Period time of taking parameter")
+        self.time_period = wx.TextCtrl(self.pnl_modulation, -1, pos=wx.Point(890, 10), size=wx.Size(80, 25), 
+                                             value='100')
+        
         self.radio_mod2 = wx.RadioButton(self.pnl_modulation, -1, 'O-QPSK demodulation for IEEE 802.15.4', (10,40))
         self.radio_mod2.SetValue(False)    
         
@@ -377,7 +381,7 @@ class Form(wx.Frame):
         self.arreter_calcul = False    
         self.init_options_gui()
         self.tb = receiver_path(self.options, self.state_mod)
-        self.th_process_click = Thread_Trait_Cliq_Calculer(self, self.tb)
+        self.th_process_click = Thread_Trait_Cliq_Calculer(self, self.tb, self.state_mod)
             
     def cliq_Arreter (self, event):
         print "End of Calcul"  
@@ -474,11 +478,13 @@ class Thread_Trait_Cliq_Courbe (_threading.Thread):
  
          
 class Thread_Trait_Cliq_Calculer (_threading.Thread):
-    def __init__(self, Form, tb):
+    def __init__(self, Form, tb, state_mod):
         _threading.Thread.__init__(self)
         self.setDaemon(1)
         self.fenetre = Form
         self.tb = tb
+        
+        self.state_mod = state_mod
         
         self.start()
         
@@ -510,7 +516,7 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
         #Calcul with Time Period 
         if self.fenetre.etat2 :
                         
-            self.pm_temps = Thread_Param_Calcul_Temps(self.fenetre, condition, self.tb)
+            self.pm_temps = Thread_Param_Calcul_Temps(self.fenetre, condition, self.tb, self.state_mod)
             
             condition.wait()
             
@@ -531,7 +537,7 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
             
 
 class Thread_Param_Calcul_Temps (_threading.Thread, Param):  
-    def __init__(self, fenetre, condition, tb):
+    def __init__(self, fenetre, condition, tb, state_mod):
         _threading.Thread.__init__(self)
         Param.__init__(self)
             
@@ -542,6 +548,7 @@ class Thread_Param_Calcul_Temps (_threading.Thread, Param):
         self.done = False
         
         self.tb = tb
+        self.state_mod = state_mod
         self.condition = condition
         
         self.init_param()
@@ -555,46 +562,55 @@ class Thread_Param_Calcul_Temps (_threading.Thread, Param):
            
         while self.get_dac_courant() <= self.fenetre.params.get_dac_fin() and not self.arreter_calcul :      
             
-            while (( self.tb.ber()<0.70) and (not self.arreter_calcul)):
-                
+            
+            if (self.state_mod == 1 ):
+                while (( self.tb.ber()<0.70) and (not self.arreter_calcul)):
+                    self.calcul_params()
+                            #if (self.tb.get_compare_vector_decision()):           
+                print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr())
+            
                 try:
                     time.sleep(1.0)
                 except KeyboardInterrupt:
-                    self.done = True                
-                try :
-                    if ((not math.isinf(self.tb.ber())) and (not math.isnan(self.tb.ber())) and (not math.isinf(self.tb.snr())) and (not math.isnan(self.tb.snr()))):
-                        print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr()) 
-                        self.calculMaxMin(self.tb.ber(), self.tb.snr())
-                        self.calculSum(self.tb.ber(), self.tb.snr())
-                        self.inc_nbr_values()
-                        self.calculAverage()
-                        self.arreter_calcul = self.fenetre.get_arreter_calcul()
-                except Exception:
-                    print 'Application interrupted 1'  
-                
-#            if (self.tb.get_compare_vector_decision()):
+                    print 'Application interrupted 3'
+                    
+                self.affiche_set_prams_form()
             
-            print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr())
-            
-            try:
-                time.sleep(1.0)
-            except KeyboardInterrupt:
-                print 'Application interrupted 3'
-
-            try :
-                if ((self.get_nbr_value() != 0) and ( self.tb.ber()>0.70)):
-                    print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr()) 
-                    self.fenetre.afficher_param(self)
-                    self.dac_courant = self.inc_dac_pas(self.dac_courant)
-                    self.tb.set_compare_vector_decision(False)  
-                    self.set_param()  
-         
-            except Exception:
-                print 'Application interrupted 2'  
+            if (self.state_mod == 2): 
+                print "Modulation OQPSK"
                 
-                      
+            if (self.state_mod == 3):
+                print "Modulation DQPSK"
+                          
         self.condition.notify()
         self.condition.release()
+        
+    def calcul_params(self):
+        try:
+            time.sleep(1.0)
+        except KeyboardInterrupt:
+            self.done = True                
+        try :
+            if ((not math.isinf(self.tb.ber())) and (not math.isnan(self.tb.ber())) and (not math.isinf(self.tb.snr())) and (not math.isnan(self.tb.snr()))):
+                print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr()) 
+                self.calculMaxMin(self.tb.ber(), self.tb.snr())
+                self.calculSum(self.tb.ber(), self.tb.snr())
+                self.inc_nbr_values()
+                self.calculAverage()
+                self.arreter_calcul = self.fenetre.get_arreter_calcul()
+        except Exception:
+            print 'Application interrupted 1'  
+    
+    def affiche_set_prams_form(self):    
+        try :
+            if ((self.get_nbr_value() != 0) and ( self.tb.ber()>0.70)):
+                 print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr()) 
+                 self.fenetre.afficher_param(self)
+                 self.dac_courant = self.inc_dac_pas(self.dac_courant)
+                 self.tb.set_compare_vector_decision(False)  
+                 self.set_param()  
+        except Exception:
+            print 'Application interrupted 2'  
         
     def init_param (self):
         self.set_dac_courant(self.fenetre.params.get_dac_init())
