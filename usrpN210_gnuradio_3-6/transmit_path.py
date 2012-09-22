@@ -25,22 +25,49 @@ from gnuradio.eng_option import eng_option
 
 import howto
 #from bpsk_modulator import bpsk_modulator
-from bpsk_modulator import bpsk_modulator
+from bpsk_modulation import bpsk_modulator
+from oqpsk_modulation import oqpsk_modulator  
+from dqpsk_modulation import dqpsk_modulator
 
 class transmit_path(gr.top_block):
-    def __init__(self, options, plusieurs = None):    
+    def __init__(self, options, state_mod):    
         gr.top_block.__init__(self, "tx_mpsk")
         
-        self.plusieurs = plusieurs
-
+        self.options = options
+        self.state_mod = state_mod
+    
         self.vector_source = gr.vector_source_b([1], True)
-        self._transmitter = bpsk_modulator(options.sps,
-                                          options.excess_bw,
-                                          options.amplitude, self.vector_source)
-
+        
+        self._modulator = self.construct_transmitter(self.options, self.state_mod, self.vector_source)
+        
         self._setup_usrp(options)
     
-        self.connect(self._transmitter, self._usrp)
+        self.connect(self._modulator, self._usrp)
+
+    def construct_transmitter(self, options, state_mod, vector_source, amplitude =None):
+       
+        if amplitude is not None :
+            self.amplitude = amplitude
+        else :
+            self.amplitude = options.amplitude
+              
+        if (state_mod == 1) :
+            #Modulation technique is BPSK
+            modulator = bpsk_modulator.bpsk_modulator(options.sps,
+                                          options.excess_bw,
+                                          self.amplitude, self.vector_source)
+        if (state_mod == 2):
+            #Modulation technique is OQPSK
+            modulator = oqpsk_modulator.oqpsk_modulator(options.sps,
+                                          options.excess_bw,
+                                          self.amplitude, self.vector_source)
+        
+        if (state_mod == 3):
+            #Modulation technique is DQPSK
+            modulator = dqpsk_modulator.dqpsk_modulator(options.sps,
+                                        options.excess_bw, self.amplitude, self.vector_source)
+        
+        return modulator 
 
         
     def _setup_usrp(self, options):
@@ -84,31 +111,34 @@ class transmit_path(gr.top_block):
         
         self._usrp = self.u
         
-    def changeOptionsTransmitter(self, options):
+    def changeOptionsTransmitter(self, options, state_mod):
         
+        #self.state_mod to choose which modulation
+        self.state_mod = state_mod
         #disconnect the current tranmitter from the usrp
-        self.disconnect(self._transmitter, self._usrp)
+        self.disconnect(self._modulator, self._usrp)
         
         self.vector_source = gr.vector_source_b([1], True)
         
-        self._transmitter = bpsk_modulator(options.sps,
-                                          options.excess_bw,
-                                          options.amplitude, self.vector_source)
+        self._modulator = self.construct_transmitter(self.options, self.state_mod, self.vector_source)
         
-        self.connect(self._transmitter, self._usrp)
+        self.connect(self._modulator, self._usrp)
     
-    def changeOptionsTransmitterWithVectorCode(self, options):
+    def changeOptionsTransmitterWithVectorCode(self, options, state_mod):
         #disconnect the current tranmitter from the usrp
-        self.disconnect(self._transmitter, self._usrp)
+        self.state_mod = state_mod
+        
+        self.disconnect(self._modulator, self._usrp)
         
         self.vector_source = howto.vector_source2(( 1, 1, 1, 1 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1), (0,0,1,1,0,0), True, True, 1)
         #self.vector_source = gr.vector_source_b([1, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], True) 
         
-        amplitude_send_vector = 1
-        self._transmitter = bpsk_modulator(options.sps,
-                                          options.excess_bw,
-                                          amplitude_send_vector, self.vector_source)
-        self.connect(self._transmitter, self._usrp)
+        #send vector with high amplitude
+        self.amplitude = 1
+        
+        self._modulator = self.construct_transmitter(self.options, self.state_mod, self.vector_source, self.amplitude)
+       
+        self.connect(self._modulator, self._usrp)
         
     def kill(self):
         self.stop()

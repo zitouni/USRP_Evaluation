@@ -103,18 +103,20 @@ class Form(wx.Frame):
         self.panel_1(sizer)
         
         # Second panel to calculate parameters with time condition
-        self.panel_2(sizer)  
+        self.panel_2(sizer) 
+                #Third Pannel to choose the modulation Technique
+        self.panel_3(sizer) 
         
         vbox.Add(self.pnl1, 0, wx.EXPAND | wx.ALL, 2)
-        vbox.Add(self.pnl_button, 0, wx.EXPAND | wx.ALL, 3)
-        #vbox.Add(self.pnl3, 1, wx.EXPAND | wx.ALL, 3)
+        vbox.Add(self.pnl_modulation, 0, wx.EXPAND | wx.ALL, 3)
+        vbox.Add(self.pnl_button, 1, wx.EXPAND | wx.ALL, 3)
 
         self.SetSizerAndFit(sizer)
         self.SetSizeHints(-1,self.GetSize().y,-1,self.GetSize().y );
         
         self.button_arreter.Disable()
-        
 
+        
         self.Show(True)
 
     def panel_1 (self, sizer):
@@ -123,14 +125,15 @@ class Form(wx.Frame):
 #        self.radio_b1 = wx.RadioButton(self.pnl1, -1, 'Fixer le nombre de prise de valeurs de parametres', (10,10), style=wx.RB_GROUP)
 #        self.nbr_values_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(410, 5), size=wx.Size(80, 25), 
 #                                             value='100')
-        self.radio_b2 = wx.RadioButton(self.pnl1, -1, 'Fix time between the change of parameters (Sec)', (10,40))
+        #self.radio_b2 = wx.RadioButton(self.pnl1, -1, 'Fix time between the change of parameters (Sec)', (10,40))
+      
+        
+        self.text_indication = wx.StaticText(self.pnl1, -1, pos = wx.Point(10, 40), label= 'Fix time between the change of parameters (Sec)')
         self.temps_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(430, 40), size=wx.Size(80, 25), 
                                              value='10')
-        
-        self.text_indication = wx.StaticText(self.pnl1, -1, pos = wx.Point(20, 70), label= "This time = at least twice the waiting time of a receiver")
         #self.options_gui.set_periode_temps(float(self.temps_gui.GetValue()))
         
-        self.radio_b2.SetValue(True)
+        #self.radio_b2.SetValue(True)
         self.etat1 = True
         self.etat2 = False
                  
@@ -148,25 +151,54 @@ class Form(wx.Frame):
         self.text_dac_pas = wx.StaticText(self.pnl1, -1, pos = wx.Point(530, 70), label= "Step of amplitude variation")
         self.dac_pas_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(850, 65), size=wx.Size(80, 25), 
                                              value='0.001')
-        #self.options_gui.set_dac_pas(float(self.dac_pas_gui.GetValue()))
+        
         
         self.text_dac_fin = wx.StaticText(self.pnl1, -1, pos = wx.Point(530, 100), label= "Final amplitude value")
         self.dac_fin = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(850, 95), size=wx.Size(80, 25), 
                                              value='33000')
-
-#        self.text_freq = wx.StaticText(self.pnl1, -1, pos = wx.Point(500, 130), label= "Valeur de Frequence (Mhz)")
-#        self.freq_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(800, 125), size=wx.Size(80, 25), 
-#                                             value='900')
-        #self.options_gui.set_frequence(float(self.freq_gui.GetValue()))
-        
- #       self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_b1.GetId())
-        self.Bind(wx.EVT_RADIOBUTTON, self.setRadioBox, id = self.radio_b2.GetId())
         
         self.statusbar = self.CreateStatusBar(2)
         self.statusbar.SetStatusText("Time between taking parameters value",0) 
-    
+
     def panel_2 (self, sizer):
-         
+        self.pnl_modulation = wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
+        #self.hbox = wx.BoxSizer(wx.HORIZONTAL)   
+        
+        self.radio_mod1 = wx.RadioButton(self.pnl_modulation, -1, 'BPSK modulation for IEEE 802.15.4', (10,10), style=wx.RB_GROUP)
+        self.radio_mod1.SetValue(True)
+        self.statusbar.SetStatusText("BPSK modulation",1)
+        #Indicate type of modulation technique 
+        self.state_mod = 1
+        
+        self.radio_mod2 = wx.RadioButton(self.pnl_modulation, -1, 'O-QPSK modulation for IEEE 802.15.4', (10,40))
+        self.radio_mod2.SetValue(False)    
+        
+        self.radio_mod3 = wx.RadioButton(self.pnl_modulation, -1, 'DQPSK modulation for IEEE 802.15.4', (10,70))
+        self.radio_mod3.SetValue(False)   
+        
+        self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_mod1.GetId())
+        self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_mod2.GetId())
+        self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_mod3.GetId())
+        
+    def InitValeurRadio (self, event):
+        self.state_mod_bpsk = self.radio_mod1.GetValue()
+        self.state_mod_oqpsk = self.radio_mod2.GetValue()
+        self.state_mod_dqpsk = self.radio_mod3.GetValue()
+        
+        if self.state_mod_bpsk == True :
+            self.statusbar.SetStatusText("BPSK modulation",1)
+            self.state_mod = 1
+            
+        if self.state_mod_oqpsk == True :
+            self.statusbar.SetStatusText("O-QPSK modulation",1)
+            self.state_mod = 2
+            
+        if self.state_mod_dqpsk == True :
+            self.statusbar.SetStatusText("DQPSK modulation", 1)
+            self.state_mod = 3
+
+    
+    def panel_3 (self, sizer):  
         self.pnl_button = wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
         self.hbox = wx.BoxSizer(wx.HORIZONTAL)
         
@@ -177,18 +209,9 @@ class Form(wx.Frame):
         self.button_arreter = wx.Button(self.pnl_button, -1, label = "Stop", pos = (0,0))
         self.hbox.Add(self.button_arreter, 1 )
         self.Bind(wx.EVT_BUTTON, self.clickStop, self.button_arreter)
+             
+        self.pnl_button.SetSizer(self.hbox)  # allow the panel to have the size of box  
         
-        
-        self.pnl_button.SetSizer(self.hbox)  # allow the panel to have the size of box         
-
-        
-    def setRadioBox (self, event):
-        self.etat2 = self.radio_b2.GetValue()
-        
-        if self.etat2 == True :
-            self.statusbar.SetStatusText("Time between parameters change",0)
-        else :
-            self.statusbar.SetStatusText(" ",1)
             
         
 #Method lunched with user click
@@ -203,15 +226,13 @@ class Form(wx.Frame):
         self.setOptionsReal()
         
         #self.tb.changeOptionsTransmitter(self.options)
-        
-        
-        self.tb = transmit_path(self.options)
+    
+        self.tb = transmit_path(self.options, self.state_mod)
+        print "amplitude initial ", self.options.amplitude
 
         #self.th_premiers_op = Thread_Premiers_Options(self.options)
-        
         self.th_cliq_commencer = Thread_click_start(self, self.tb)
-        
-
+    
 
                                
     def clickStop (self, event):
@@ -274,6 +295,8 @@ class Thread_click_start (_threading.Thread):
         
         while self.options.amplitude <= self.options_gui.getAmplitudeEnd():
             
+            self.changeAmplitude()
+            
             Thread_timer(self.time_to_send, self.tb)
             
             #Running a flow graph
@@ -285,9 +308,7 @@ class Thread_click_start (_threading.Thread):
             
             #If button stop is pushed 
             if (self.form.buttonStopPushed):
-                break
-
-            self.changeAmplitude() 
+                break 
         
         #enable the button of commencer to allow a new use of commencer button
         self.form.button_commencer.Enable()
@@ -302,7 +323,7 @@ class Thread_click_start (_threading.Thread):
         print "Current amplitude : ", self.options.amplitude
         
         #Prepare change amplitude with indication by vector code
-        self.tb.changeOptionsTransmitterWithVectorCode(self.options)
+        self.tb.changeOptionsTransmitterWithVectorCode(self.options, self.form.state_mod)
         
         #Time to send vector code
         time_to_send_code = 10
@@ -325,7 +346,7 @@ class Thread_click_start (_threading.Thread):
         #Use the new amplitude to send a vector of values 1
         self.options.amplitude = self.options.amplitude + self.options_gui.getAmplitudeStep()
      
-        self.tb.changeOptionsTransmitter(self.options)
+        self.tb.changeOptionsTransmitter(self.options, self.form.state_mod)
         #self.tb.changeOptionsTransmitterWithVectorCode(self.options)
 
         print "New amplitude : ", self.options.amplitude

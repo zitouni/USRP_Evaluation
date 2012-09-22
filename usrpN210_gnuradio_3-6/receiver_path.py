@@ -10,19 +10,43 @@ from gnuradio.eng_option import eng_option
 
 #from bpsk_demodulator import bpsk_demodulator
 
-from bpsk_demodulator import bpsk_demodulator
+from bpsk_modulation import bpsk_demodulator
+from oqpsk_modulation import oqpsk_demodulator 
+from dqpsk_modulation import dqpsk_demodulator
 
 class receiver_path(gr.top_block):
-    def __init__(self, options):    
+    def __init__(self, options, state_mod):    
 
         gr.top_block.__init__(self, "rx_mpsk")
-
+        
+        self.options = options
+        self.state_mod = state_mod
         # Create a USRP source at desired board, sample rate, frequency, and gain
         self._setup_usrp(options)
  
-        self._receiver = bpsk_demodulator(options)
+        self.demodulator = self.construct_receiver(self.options, self.state_mod)
         
-        self.connect(self._usrp, self._receiver)
+        self.connect(self._usrp, self.demodulator)
+
+    def construct_receiver(self, options, state_mod):
+              
+        if (state_mod == 1) :
+            #Modulation technique is BPSK
+            print "Hello BPSK"
+            demodulator = bpsk_demodulator.bpsk_demodulator(options)
+            return demodulator 
+            
+        if (state_mod == 2):
+            #Modulation technique is OQPSK
+            print "Hello OQPSK"
+            demodulator = oqpsk_demodulator.oqpsk_demodulator(options)
+            return demodulator 
+        
+        if (state_mod == 3):
+            #Modulation technique is DQPSK
+            demodulator = dqpsk_demodulator.dqpsk_demodulator(options)
+            return demodulator 
+        
 
 
     def _setup_usrp(self, options):
@@ -55,19 +79,19 @@ class receiver_path(gr.top_block):
         self._usrp = u
     
     def get_compare_vector_decision(self):
-        return self._receiver.get_compare_vector_decision()
+        return self.demodulator.get_compare_vector_decision()
     
     def set_compare_vector_decision(self, decision):
-        self._receiver.set_compare_vector_decision(decision)
+        self.demodulator.set_compare_vector_decision(decision)
     
     def get_comparator_vector_number(self):
-        return self._receiver.get_comparator_vector_number()
+        return self.demodulator.get_comparator_vector_number()
        
     def snr(self):
-        return self._receiver.snr()
+        return self.demodulator.snr()
 
     def ber(self):
-        return self._receiver.ber()
+        return self.demodulator.ber()
     
     def kill(self):
         del self

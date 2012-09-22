@@ -24,7 +24,6 @@ from __future__ import division
 from gnuradio import gr, eng_notation, uhd
 from optparse import OptionParser
 from gnuradio.eng_option import eng_option
-from bpsk_demodulator import bpsk_demodulator
 
 import gnuradio.gr.gr_threading as _threading
 import sys, time
@@ -45,7 +44,7 @@ def get_options():
     parser.add_option("-S", "--samples-per-symbol", type = "float", default=2,
                           help="set samples/symbol [default=%default]")
     
-    parser.add_option("-s", "--samp-rate", type="eng_float", default=0.25e6,
+    parser.add_option("-s", "--samp-rate", type="eng_float", default=0.5e6,
                       help="Select modulation sample rate (default=%default)")
     
     parser.add_option("-r", "--data-rate", type="eng_float", default=250e3,

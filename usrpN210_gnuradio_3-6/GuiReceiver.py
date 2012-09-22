@@ -19,14 +19,22 @@ import Gnuplot, Gnuplot.funcutils
 
 class Param():
     
-    def __init__(self):
+    def __init__(self, options = None):
         
-        self.set_param()
-        
+        self.set_param()       
         self.dac_courant = 0.0 
         self.distance = 0.0
         self.frequence = 0.0 
         self.dac_pas = 0.0
+        
+        self.nbr_init = 0.0
+        self.distance = 0.0
+        self.dac_pas = 0.0
+        self.dac_init = 0.0
+        self.dac_fin = 0.0
+        
+        if not options  == None :
+            self.frequence = options.freq 
           
     def set_param(self):
         self.nbr_values = 0.0
@@ -43,8 +51,8 @@ class Param():
 
         
     def calculSum (self, ber, snr):
-        self.som_ber = self.som_ber + ber
-        self.som_snr = self.som_snr + snr 
+        self.som_ber = float(self.som_ber) + float(ber)
+        self.som_snr = float(self.som_snr) + float(snr) 
         
     def calculMaxMin (self, ber, snr):
         if ber <= self.min_ber :
@@ -60,8 +68,8 @@ class Param():
     # Calculate the values of parameters means  
     def calculAverage (self):
         try :
-            self.moy_ber = self.som_ber  /self.nbr_values
-            self.moy_snr = self.som_snr / self.nbr_values            
+            self.moy_ber = float(self.som_ber)  /self.nbr_values
+            self.moy_snr = float(self.som_snr) / self.nbr_values            
         except ZeroDivisionError:
             print "Attention division by 0 !!"
     
@@ -87,7 +95,7 @@ class Param():
         return valeur_courant + self.dac_pas    
 
     def inc_nbr_values(self):
-        self.nbr_values +=1 
+        self.nbr_values=self.nbr_values+1
     
     def set_dac_courant(self, dac_courant_valeur):
         self.dac_courant = dac_courant_valeur
@@ -115,6 +123,34 @@ class Param():
     
     def get_frequence (self):
         return self.frequence  
+    
+    def set_nbr_init (self, valeur_nbr_init):
+        self.nbr_init = valeur_nbr_init
+        
+    def get_nbr_init (self):
+        return self.nbr_init
+    
+    def set_dac_init (self, valeur_init):
+        self.dac_init = valeur_init
+        self.dac_courant = self.dac_init
+    
+    def set_dac_fin (self, valeur_dac_fin):
+        self.dac_fin = valeur_dac_fin
+    
+    def get_dac_init (self):
+        return self.dac_init
+    
+    def get_dac_fin(self):
+        return self.dac_fin
+    
+    def get_dac_init (self):
+        return self.dac_init
+    
+    def get_distance(self):
+        return self.distance
+    
+    def get_dac_pas(self):
+        return self.dac_pas
 
 class thread_flot_graph (_threading.Thread):
     def __init__(self, tb):
@@ -126,65 +162,19 @@ class thread_flot_graph (_threading.Thread):
         self.start()
         
     def run(self):
+        print "tb run"
         try:
-            self.tb.run() 
+            self.tb.run()
+            #self.tb.wait() 
         except KeyboardInterrupt:
             pass
+        print "tb stoped"
+    
+    def kill(self):
+        del self
 
+    
 
-    
-class Option():
-    frequence = 0.0
-    def __init__(self, options =None):
-        self.nbr_init = 0.0
-        self.distance = 0.0
-        self.dac_pas = 0.0
-        self.dac_init = 0.0
-        self.dac_fin = 0.0
-        
-        self.periode_temps = 0.0
-        self.attente = 0.0 
-        
-        if not options  == None :
-            self.frequence = options.freq 
-    
-    
-    def set_nbr_init (self, valeur_nbr_init):
-        self.nbr_init = valeur_nbr_init
-        
-    def set_dac_init (self, valeur_init):
-        self.dac_init = valeur_init
-        self.dac_courant = self.dac_init
-    
-    def set_dac_pas (self, valeur_dac_pas):
-        self.dac_pas = valeur_dac_pas
-        
-    def set_distance (self, valeur_distance):
-        self.distance = valeur_distance
-        
-    def set_dac_fin (self, valeur_dac_fin):
-        self.dac_fin = valeur_dac_fin
-        
-    def set_frequence(self, valeur_frequence):
-        self.frequence = valeur_frequence
-        
-    def get_dac_fin(self):
-        return self.dac_fin
-  
-    def get_nbr_init (self):
-        return self.nbr_init
-    
-    def get_dac_init (self):
-        return self.dac_init
-    
-    def get_distance(self):
-        return self.distance
-    
-    def get_dac_pas(self):
-        return self.dac_pas
-    
-    def get_frequence (self):
-        return self.frequence  
 
 class status_thread(_threading.Thread):
     def __init__(self, tb):
@@ -218,19 +208,15 @@ class Form(wx.Frame):
     def __init__(self, sizer,  parent, id, title, options = None):
         wx.Frame.__init__(self, parent, id, title)
         
-        self.options = Option(options) 
+        self.options = options
+        self.params = Param(self.options) 
               
         self.initialiser(sizer)
         self.init_options_gui()
         self.nbr_lignes_text = 0.0
         
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-        
-        self.tb = receiver_path(options)
-        #thread_check = Thread_check(self.tb)
-        
-        self.flot_graph = thread_flot_graph(self.tb)
-        self.status = status_thread(self.tb)
+
         
     def OnClose(self, event):
         self.tb.stop()
@@ -242,15 +228,19 @@ class Form(wx.Frame):
         sizer.Add(vbox,(0,0),(1,1),wx.EXPAND)
         
         #First panel of buttons 
-        self.panneau_1(sizer)
+        self.panel_1(sizer)
+        
+        #Second pannel to choose the demodulation technique
+        self.panel_2(sizer)
         
         # Second panel to calculate parameters with time condition
-        self.panneau_2(sizer)
+        self.panel_3(sizer)
         
         #Third panel of text containing the values of parameters 
-        self.panneau_3(sizer)    
+        self.panel_4(sizer)    
         
         vbox.Add(self.pnl1, 0, wx.EXPAND | wx.ALL, 2)
+        vbox.Add(self.pnl_modulation, 0, wx.EXPAND | wx.ALL, 2)
         vbox.Add(self.pnl_button, 0, wx.EXPAND | wx.ALL, 3)
         vbox.Add(self.pnl3, 1, wx.EXPAND | wx.ALL, 3)
 
@@ -260,16 +250,13 @@ class Form(wx.Frame):
         self.Show(True)
     
     def init_options_gui (self):
-        self.options.set_nbr_init(float(self.nbr_values_gui.GetValue()))
-        self.options.set_distance(float(self.distance_gui.GetValue()))
-        self.options.set_dac_init(float(self.dac_init_gui.GetValue()))
-        self.options.set_dac_pas(float(self.dac_pas_gui.GetValue()))
-        self.options.set_dac_fin(float(self.dac_fin_gui.GetValue()))
-        #self.options.set_periode_temps(float(self.temps_gui.GetValue()))
-        #self.options.set_attente(float(self.attente_gui.GetValue()))
-        #self.options.set_frequence(float(self.freq_gui.GetValue()))
+        self.params.set_nbr_init(float(self.nbr_values_gui.GetValue()))
+        self.params.set_distance(float(self.distance_gui.GetValue()))
+        self.params.set_dac_init(float(self.dac_init_gui.GetValue()))
+        self.params.set_dac_pas(float(self.dac_pas_gui.GetValue()))
+        self.params.set_dac_fin(float(self.dac_fin_gui.GetValue()))
         
-    def panneau_1 (self, sizer):
+    def panel_1 (self, sizer):
         self.pnl1= wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
         
         self.radio_b1 = wx.RadioButton(self.pnl1, -1, 'Fix a number of measured parameters values', (10,10), style=wx.RB_GROUP)
@@ -285,11 +272,7 @@ class Form(wx.Frame):
         
         self.radio_b2 = wx.RadioButton(self.pnl1, -1, 'Fix a period of time to calculate the average of parametres (Sec)', (10,70))
         self.radio_b2.SetValue(True)
-#        self.temps_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(480, 65), size=wx.Size(80, 25), 
-#                                             value='10') 
-#        wx.StaticText(self.pnl1, -1, pos = wx.Point(35, 95), label= " Waiting time betwenn the periods of calculating the average (Sec)")
-#        self.attente_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(480, 90), size=wx.Size(80, 25), 
-#                                             value='2')
+
         
         self.text_dac_init = wx.StaticText(self.pnl1, -1, pos = wx.Point(570, 40), label= "Initial value of signal amplitude")
         self.dac_init_gui = wx.TextCtrl(self.pnl1, -1, pos=wx.Point(890, 35), size=wx.Size(80, 25), 
@@ -310,9 +293,29 @@ class Form(wx.Frame):
         self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_b2.GetId())
         
         self.statusbar = self.CreateStatusBar(2)
-        self.statusbar.SetStatusText("Number of taken parameter values",0) 
+        self.statusbar.SetStatusText("Time between taking the average of parameters",0)
+        
+    def panel_2 (self, sizer):
+        self.pnl_modulation = wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
+        #self.hbox = wx.BoxSizer(wx.HORIZONTAL)   
+        
+        self.radio_mod1 = wx.RadioButton(self.pnl_modulation, -1, 'BPSK demodulation for IEEE 802.15.4', (10,10), style=wx.RB_GROUP)
+        self.radio_mod1.SetValue(True)
+        self.statusbar.SetStatusText("BPSK demodulation",1)
+        #Indicate type of modulation technique 
+        self.state_mod = 1
+        
+        self.radio_mod2 = wx.RadioButton(self.pnl_modulation, -1, 'O-QPSK demodulation for IEEE 802.15.4', (10,40))
+        self.radio_mod2.SetValue(False)    
+        
+        self.radio_mod3 = wx.RadioButton(self.pnl_modulation, -1, 'DQPSK demodulation for IEEE 802.15.4', (10,70))
+        self.radio_mod3.SetValue(False)   
+        
+        self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_mod1.GetId())
+        self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_mod2.GetId())
+        self.Bind(wx.EVT_RADIOBUTTON, self.InitValeurRadio, id = self.radio_mod3.GetId()) 
     
-    def panneau_2 (self, sizer):
+    def panel_3 (self, sizer):
          
         self.pnl_button = wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
         self.hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -335,23 +338,37 @@ class Form(wx.Frame):
         
         self.pnl_button.SetSizer(self.hbox)  # allow the panel to have the size of box         
     
-    def panneau_3 (self, sizer):
+    def panel_4 (self, sizer):
         self.pnl3 = wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
         self.text_performances = wx.TextCtrl(self.pnl3, -1, pos=wx.Point(0, 0), size=wx.Size(1600,400), style=wx.TE_MULTILINE, 
                                              value='The averages of parameters SNR et BER')
         
     def InitValeurRadio (self, event):
-        self.etat1 = self.radio_b1.GetValue()
-        self.etat2 = self.radio_b2.GetValue()
-        if self.etat1 == True :
-            self.statusbar.SetStatusText("Number between taking the average of parameters",0)
-        else :
-            self.statusbar.SetStatusText(" ",0)
+        self.state_mod_bpsk = self.radio_mod1.GetValue()
+        self.state_mod_oqpsk = self.radio_mod2.GetValue()
+        self.state_mod_dqpsk = self.radio_mod3.GetValue()
+        
+        if self.state_mod_bpsk == True :
+            self.statusbar.SetStatusText("BPSK modulation",1)
+            self.state_mod = 1
             
-        if self.etat2 == True :
-            self.statusbar.SetStatusText("Time between taking the average of parameters",1)
-        else :
-            self.statusbar.SetStatusText(" ",1)
+        if self.state_mod_oqpsk == True :
+            self.statusbar.SetStatusText("O-QPSK modulation",1)
+            self.state_mod = 2
+            
+        if self.state_mod_dqpsk == True :
+            self.statusbar.SetStatusText("DQPSK modulation", 1)
+            self.state_mod = 3
+#        
+#        if self.etat1 == True :
+#            self.statusbar.SetStatusText("Number between taking the average of parameters",0)
+#        else :
+#            self.statusbar.SetStatusText(" ",0)
+#            
+#        if self.etat2 == True :
+#            self.statusbar.SetStatusText("Time between taking the average of parameters",1)
+#        else :
+#            self.statusbar.SetStatusText(" ",1)
             
         
 #Method lunched with user click
@@ -359,7 +376,8 @@ class Form(wx.Frame):
         self.button_calculer.Disable()   
         self.arreter_calcul = False    
         self.init_options_gui()
-        Thread_Trait_Cliq_Calculer(self, self.tb)
+        self.tb = receiver_path(self.options, self.state_mod)
+        self.th_process_click = Thread_Trait_Cliq_Calculer(self, self.tb)
             
     def cliq_Arreter (self, event):
         print "End of Calcul"  
@@ -419,7 +437,8 @@ class Form(wx.Frame):
             print 'Application interrupted 1'  
     
     def OnClose(self, event):
-        self.tb.kill()
+        #self.th_process_click.kill()
+        #self.tb.kill()
         self.Destroy()
          
 
@@ -460,6 +479,7 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
         self.setDaemon(1)
         self.fenetre = Form
         self.tb = tb
+        
         self.start()
         
     def run(self):
@@ -469,6 +489,7 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
         #just to clean for first insertion of text performances 
         if self.fenetre.nbr_lignes_text == 0 :
             self.fenetre.text_performances.Clear()
+        
         self.fenetre.nbr_lignes_text+=1
         ###End Just
          
@@ -500,10 +521,17 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
         
         self.fenetre.button_calculer.Enable()    
         condition.release()
+        
+    def kill(self):
+#        if self.pm_nbr is not None : 
+#            self.pm_nbr.kill()
+        if self.pm_temps is not None :
+            self.pm_temps.kill()
+        del self
             
 
 class Thread_Param_Calcul_Temps (_threading.Thread, Param):  
-    def __init__(self, fenetre, condition, tb = None):
+    def __init__(self, fenetre, condition, tb):
         _threading.Thread.__init__(self)
         Param.__init__(self)
             
@@ -512,69 +540,77 @@ class Thread_Param_Calcul_Temps (_threading.Thread, Param):
 
         self.arreter_calcul = self.fenetre.get_arreter_calcul()
         self.done = False
+        
         self.tb = tb
         self.condition = condition
         
         self.init_param()
         self.start()
         
-    def init_param (self):
-        self.set_dac_courant(self.fenetre.options.get_dac_init())
-        self.set_dac_pas(self.fenetre.options.get_dac_pas())
-        self.set_distance(self.fenetre.options.get_distance())
-        self.set_frequence(self.fenetre.options.get_frequence())
-        
     def run(self):
         self.condition.acquire()
         print "State Time"     
         
-        while self.get_dac_courant() <= self.fenetre.options.get_dac_fin() and not self.arreter_calcul :       
-    
-                
-            while (( self.tb.ber()<=0.56) and (not self.arreter_calcul)):              
-                try :
-                    if (math.isinf(self.tb.ber()) or math.isnan(self.tb.ber()) or math.isinf(self.tb.snr()) or math.isnan(self.tb.snr())):
-                        continue
-                    else:
-                        self.calculMaxMin(self.tb.ber(), self.tb.snr())
-                        self.calculSum(self.tb.ber(), self.tb.snr())
-                        self.inc_nbr_values()
-                        self.arreter_calcul = self.fenetre.get_arreter_calcul()
-                except Exception:
-                    print 'Application interrupted 1'  
+        self.flot_graph =  thread_flot_graph(self.tb)
+           
+        while self.get_dac_courant() <= self.fenetre.params.get_dac_fin() and not self.arreter_calcul :      
+            
+            while (( self.tb.ber()<0.70) and (not self.arreter_calcul)):
                 
                 try:
                     time.sleep(1.0)
                 except KeyboardInterrupt:
-                    self.done = True
+                    self.done = True                
+                try :
+                    if ((not math.isinf(self.tb.ber())) and (not math.isnan(self.tb.ber())) and (not math.isinf(self.tb.snr())) and (not math.isnan(self.tb.snr()))):
+                        print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr()) 
+                        self.calculMaxMin(self.tb.ber(), self.tb.snr())
+                        self.calculSum(self.tb.ber(), self.tb.snr())
+                        self.inc_nbr_values()
+                        self.calculAverage()
+                        self.arreter_calcul = self.fenetre.get_arreter_calcul()
+                except Exception:
+                    print 'Application interrupted 1'  
                 
 #            if (self.tb.get_compare_vector_decision()):
             
-            print "Estimated SNR: %f dB  BER: %f " % ( self.tb.snr(), self.tb.ber())
+            print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr())
             
             try:
                 time.sleep(1.0)
             except KeyboardInterrupt:
                 print 'Application interrupted 3'
 
-            #Calcul la moyenne des parametres
             try :
-                if ((self.get_nbr_value() != 0) and ( self.tb.ber()>0.60)):
-                    self.calculAverage()
+                if ((self.get_nbr_value() != 0) and ( self.tb.ber()>0.70)):
+                    print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr()) 
                     self.fenetre.afficher_param(self)
                     self.dac_courant = self.inc_dac_pas(self.dac_courant)
                     self.tb.set_compare_vector_decision(False)  
                     self.set_param()  
+         
             except Exception:
                 print 'Application interrupted 2'  
                 
                       
         self.condition.notify()
         self.condition.release()
+        
+    def init_param (self):
+        self.set_dac_courant(self.fenetre.params.get_dac_init())
+        self.set_dac_pas(self.fenetre.params.get_dac_pas())
+        self.set_distance(self.fenetre.params.get_distance())
+        self.set_frequence(self.fenetre.params.get_frequence())
+        
+    def kill(self):
+        self.tb.stop()
+        self.tb.kill()
+        self.flot_graph.kill()
+        del self
 
 class Thread_Param_Calcul_Nbr (_threading.Thread, Param):
     
-    def __init__(self, fenetre, condition, tb = None):
+    def __init__(self, fenetre, condition):
         _threading.Thread.__init__(self)
         Param.__init__(self)
         
@@ -582,7 +618,10 @@ class Thread_Param_Calcul_Nbr (_threading.Thread, Param):
         self.fenetre = fenetre
         self.arreter_calcul = self.fenetre.get_arreter_calcul()
         self.done = False
-        self.tb = tb
+        
+                    
+        self.flot_graph = thread_flot_graph(self.tb)
+                
         self.condition = condition
         
         self.init_param()
@@ -611,6 +650,13 @@ class Thread_Param_Calcul_Nbr (_threading.Thread, Param):
         self.set_dac_courant(self.fenetre.options.get_dac_init())
         self.set_distance(self.fenetre.options.get_distance())
         self.set_frequence(self.fenetre.options.get_frequence())
+    
+    def kill(self):
+        self.tb.stop()
+        self.tb.kill()
+        self.flot_graph.kill()
+        del self
+
              
 if __name__ == "__main__":
     

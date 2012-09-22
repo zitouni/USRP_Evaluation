@@ -47,7 +47,7 @@ def get_options():
     parser.add_option("-S", "--sps", type = "float", default=8,
                           help="set samples/symbol [default=%default]")
     
-    parser.add_option("-s", "--samp-rate", type="eng_float", default=1e6,
+    parser.add_option("-s", "--samp-rate", type="eng_float", default=2e6,
                       help="Select modulation sample rate (default=%default)")
     
     parser.add_option("-r", "--rate", type="eng_float", default=250e3,
