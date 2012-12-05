@@ -213,10 +213,13 @@ class Form(wx.Frame):
               
         self.initialiser(sizer)
         self.init_options_gui()
-        self.nbr_lignes_text = 0.0
         
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-
+        
+        self.nomFichier = "BackUp.dat"                                                 
+        #Save Backup of data mesured
+        self.fichierBackUp = open(self.nomFichier,"w")  
+        self.fichierBackUp.close()
         
     def OnClose(self, event):
         self.tb.stop()
@@ -344,7 +347,7 @@ class Form(wx.Frame):
     
     def panel_4 (self, sizer):
         self.pnl3 = wx.Panel(self, -1, style = wx.SIMPLE_BORDER)
-        self.text_performances = wx.TextCtrl(self.pnl3, -1, pos=wx.Point(0, 0), size=wx.Size(1600,400), style=wx.TE_MULTILINE, 
+        self.text_performances = wx.TextCtrl(self.pnl3, -1, pos=wx.Point(0, 0), size=wx.Size(1600,400), style=wx.TE_MULTILINE|wx.TE_READONLY, 
                                              value='The averages of parameters SNR et BER')
         
     def InitValeurRadio (self, event):
@@ -415,25 +418,30 @@ class Form(wx.Frame):
 
     def afficher_param (self, param):
         #Test if the value of tb is passed by constructure
+
         try :
             if not param== None :
-                self.text_performances.WriteText("nbr: " + str(param.get_nbr_value())+
-                                                 " Dist: "+ str(param.get_distance())+
-                                                 " BerMoy: " + str(param.get_moy_ber())+
-                                                 " BerMin: " + str(param.get_min_ber())+ 
-                                                 " BerMax: " + str(param.get_max_ber())+
-                                                 " SnrMoy: " + str(param.get_moy_snr())+
-                                                 " SnrMin: " + str(param.get_min_snr())+ 
-                                                 " SnrMax: " + str(param.get_max_snr())+ 
-                                                 " Amp: " + str(param.get_dac_courant()) + 
-                                                 " Freq: " + str(param.get_frequence()) +"\n") 
+                text = "".join(" nbr:" + str(param.get_nbr_value())+ " Dist:"+ str(param.get_distance())+ " BerMoy:"+ str(param.get_moy_ber())+
+                               " BerMin: "+ str(param.get_min_ber())+ 
+                               " BerMax: "+ str(param.get_max_ber())+
+                               " SnrMoy: "+ str(param.get_moy_snr())+
+                               " SnrMin: "+ str(param.get_min_snr())+ 
+                               " SnrMax: " + str(param.get_max_snr())+ 
+                               " Amp: "  + str(param.get_dac_courant())+ 
+                               " Freq: " + str(param.get_frequence()) + "\n")
+                
+                self.text_performances.WriteText(text) 
+                
+                self.nomFichier = "BackUp.dat"                                                 
                 #Save Backup of data mesured
-                nomFichier = "BackUp.dat"
-                fichierBackUp = open(nomFichier,"w")  
-                fichierBackUp.writelines(self.text_performances.GetValue())
-                fichierBackUp.close()
+                self.fichierBackUp = open(self.nomFichier,"a")  
+                self.fichierBackUp.write(text)
+                self.fichierBackUp.close()
+                
+                ##param.condition_afficher.notify()
+                ##param.condition_afficher.release()
                                                     
-                #                                             " Frequency_Offset: " + str(self.pm.Calcul_Moyennes()[3]) +
+                #  " Frequency_Offset: " + str(self.pm.Calcul_Moyennes()[3]) +
                 #                                             " Timing_offset: " + str(self.pm.Calcul_Moyennes()[4])+"\n" )
             else :
                 self.text_performances.WriteText("Calculate\n")
@@ -493,10 +501,9 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
         condition.acquire()
         
         #just to clean for first insertion of text performances 
-        if self.fenetre.nbr_lignes_text == 0 :
-            self.fenetre.text_performances.Clear()
         
-        self.fenetre.nbr_lignes_text+=1
+        self.fenetre.text_performances.Clear()
+        
         ###End Just
          
         #Calcul with initiating the numbre of values
@@ -508,7 +515,7 @@ class Thread_Trait_Cliq_Calculer (_threading.Thread):
             
             condition.wait()
             
-#            #Calcul la moyenne des parametres
+            #Calcul la moyenne des parametres
 
             self.fenetre.afficher_param(self.pm_nbr)
             self.fenetre.sauvegarder_fichier()          
@@ -551,6 +558,8 @@ class Thread_Param_Calcul_Temps (_threading.Thread, Param):
         self.state_mod = state_mod
         self.condition = condition
         
+        self.condition_afficher =_threading.Condition()
+        
         self.init_param()
         self.start()
         
@@ -562,19 +571,24 @@ class Thread_Param_Calcul_Temps (_threading.Thread, Param):
            
         while self.get_dac_courant() <= self.fenetre.params.get_dac_fin() and not self.arreter_calcul :      
             
-            
             if (self.state_mod == 1 ):
-                while (( self.tb.ber()<0.70) and (not self.arreter_calcul)):
-                    self.calcul_params()
-                            #if (self.tb.get_compare_vector_decision()):           
-                print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr())
+                self.BER = self.tb.ber()
+                self.SNR = self.tb.snr()
+                while ((self.BER<0.70) and (not self.arreter_calcul)):                    
+                    self.calcul_params(self.BER, self.SNR)
+                    self.arreter_calcul = self.fenetre.get_arreter_calcul()
+                    #if (self.tb.get_compare_vector_decision()):                          
+                    self.BER = self.tb.ber()
+                    self.SNR = self.tb.snr()
+                print "***Ber: %f ***Snr: %f" % ( self.BER , self.SNR)
             
                 try:
                     time.sleep(1.0)
                 except KeyboardInterrupt:
                     print 'Application interrupted 3'
                     
-                self.affiche_set_prams_form()
+                if (self.tb.ber()>=0.70):    
+                    self.affiche_set_prams_form(self.BER, self.SNR)
             
             if (self.state_mod == 2): 
                 print "Modulation OQPSK"
@@ -585,27 +599,28 @@ class Thread_Param_Calcul_Temps (_threading.Thread, Param):
         self.condition.notify()
         self.condition.release()
         
-    def calcul_params(self):
+    def calcul_params(self, BER, SNR):
         try:
             time.sleep(1.0)
         except KeyboardInterrupt:
             self.done = True                
         try :
-            if ((not math.isinf(self.tb.ber())) and (not math.isnan(self.tb.ber())) and (not math.isinf(self.tb.snr())) and (not math.isnan(self.tb.snr()))):
-                print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr()) 
-                self.calculMaxMin(self.tb.ber(), self.tb.snr())
-                self.calculSum(self.tb.ber(), self.tb.snr())
+            if ((not math.isinf(BER)) and (not math.isnan(BER)) and (not math.isinf(SNR)) and (not math.isnan(SNR))):
+                print "Ber: %f Snr: %f" % (BER, SNR) 
+                self.calculMaxMin(BER,SNR)
+                self.calculSum(BER, SNR)
                 self.inc_nbr_values()
                 self.calculAverage()
-                self.arreter_calcul = self.fenetre.get_arreter_calcul()
         except Exception:
             print 'Application interrupted 1'  
     
-    def affiche_set_prams_form(self):    
+    def affiche_set_prams_form(self, BER, SNR):    
         try :
-            if ((self.get_nbr_value() != 0) and ( self.tb.ber()>0.70)):
-                 print "Ber: %f Snr: %f" % ( self.tb.ber(), self.tb.snr()) 
+            if ((self.get_nbr_value() != 0) and (BER>0.70)):
+                 #Place the function afficher acquire in mutex 
+                 ##self.condition_afficher.acquire()
                  self.fenetre.afficher_param(self)
+                 ##self.condition_afficher.wait()
                  self.dac_courant = self.inc_dac_pas(self.dac_courant)
                  self.tb.set_compare_vector_decision(False)  
                  self.set_param()  

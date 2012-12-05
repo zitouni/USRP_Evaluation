@@ -46,14 +46,17 @@ class bpsk_demodulator(gr.hier_block2, grc_wxgui.top_block_gui):
         grc_wxgui.top_block_gui.__init__(self, title="Top Block")
         
         self._samples_per_symbol = options.samples_per_symbol
+        
+        # Number of bits per symbol
+        self._bits_per_symbol = 1
         # Create AGC to scale input to unity
         self._agc = gr.agc_cc(1e-5, 1.0, 1.0, 1.0)
         # Create RRC with specified excess bandwidth
         taps = gr.firdes.root_raised_cosine(1.0,       # Gain
-					    self._samples_per_symbol,      # Sampling rate
-					    1.0,                           # Symbol rate
-					    0.35,                          # Roll-off factor
-					    11*self._samples_per_symbol)                  # Number of taps
+                        self._samples_per_symbol,      # Sampling rate
+                        1.0,                           # Symbol rate
+                        0.35,                          # Roll-off factor
+                        11*self._samples_per_symbol)                  # Number of taps
         
         self._rrc = gr.fir_filter_ccf(1, taps)
         
@@ -71,13 +74,13 @@ class bpsk_demodulator(gr.hier_block2, grc_wxgui.top_block_gui):
         
         # Add an SNR probe on the demodulated constellation
         #self._snr_probe = gr.probe_mpsk_snr_c(10.0/symbol_rate)
-        self._snr_probe = digital.mpsk_snr_est_cc(0, 10000, 0.001) # 0 at the first mean Simple
+        self._symbol_rate = options.data_rate / self._bits_per_symbol
+        #self._snr_probe = digital.mpsk_snr_est_cc(0, 10000, 0.001) # 0 at the first mean Simple
         
-#        #Null for recuperate the out of snr
-
-
-        self.gr_null_sink_cc = gr.null_sink(gr.sizeof_gr_complex*1)
+        self._snr_probe = digital.probe_mpsk_snr_est_c(digital.SNR_EST_M2M4, alpha=10.0/self._symbol_rate)
+        #self._snr_probe = digital.mpsk_snr_est_cc(digital.SNR_EST_SIMPLE, alpha=10.0/self._symbol_rate)
     
+  
         # Slice the resulting constellation into bits.
         # Get inphase channel and make decision about 0
         self._c2r = gr.complex_to_real()
@@ -107,13 +110,17 @@ class bpsk_demodulator(gr.hier_block2, grc_wxgui.top_block_gui):
         # agc --> _rrc --> costas --> _mm --> _c2r  -->  _slicer  -->   _descrambler --> _ber --> gr_null_sink_f2
         #"""""""""""""""""""""""""--> gr_null_sink_f1 ""           _vector_source_ref-->
         
-        
+#        
+#        self.connect(self, self._agc, self._rrc, self._costas, self._mm, 
+#                     self._c2r, self._slicer, self._descrambler, self.comparator, (self._ber, 1))
+#        
+                
         self.connect(self, self._agc, self._rrc, self._costas, self._mm, 
-                     self._c2r, self._slicer, self._descrambler, self.comparator, (self._ber, 1))
+                     self._c2r, self._slicer, self._descrambler, (self._ber, 1))
         
         
         self.connect((self._costas, 1), (self.gr_null_sink_f1, 0))
-        self.connect(self._mm, self._snr_probe, self.gr_null_sink_cc)
+        self.connect(self._mm, self._snr_probe)
         
         self.connect(self._vector_source_ref, (self._ber,0)) 
         self.connect(self._ber, self.gr_null_sink_f2)
